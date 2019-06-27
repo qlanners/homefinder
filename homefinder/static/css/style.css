@@ -1,0 +1,19 @@
+body {
+margin: 0;
+font-family: sans-serif;
+font-size: 11px;
+}
+
+circle{
+	fill: red;
+}
+
+line{
+	stroke: black;
+	stroke-width: 4;
+}
+
+h1 {
+	color: black;
+/*	font-family: 'Righteous';*/
+}
