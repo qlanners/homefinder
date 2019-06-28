@@ -1,0 +1,192 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>HomeFinder</title>
+
+ <link rel="stylesheet" href="{% static 'css/style.css' %}" type="text/css" >
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/topojson.v2.min.js"></script>
+
+<script src="https://cdn.pydata.org/bokeh/release/bokeh-0.13.0.min.js"></script>
+<!-- <script src="https://cdn.pydata.org/bokeh/release/bokeh-widgets-0.13.0.min.js"></script> -->
+<!-- <script src="https://cdn.pydata.org/bokeh/release/bokeh-tables-0.13.0.min.js"></script> -->
+
+<script type="text/javascript" src="{% static 'jquery-3.4.1.js' %}"></script>
+
+
+
+<!-- adding fonts -->
+<link href="http://fonts.googleapis.com/css?family=Righteous" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=Abel" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=Merriweather" rel="stylesheet" type="text/css">
+
+{{ script | safe }}
+
+</head>
+
+<body>
+
+<style>
+
+path:hover {
+	fill: orange;
+}
+
+div.tooltip {	
+    position: absolute;			
+    text-align: center;			
+    width: auto;					
+    height: auto;					
+    padding: 5px;				
+    font: 12px sans-serif;		
+    background: lightsteelblue;	
+    border: 0px;		
+    border-radius: 20px;			
+    pointer-events: none;			
+}
+</style>
+
+<script type="text/javascript">
+  var rent = JSON.parse('{{current_rent | safe}}');
+
+  var width = 960;
+  var height = 600;
+
+  var states = JSON.parse('{{states | safe}}');
+  console.log(states)
+
+
+
+
+  // var projection = d3.geoAlbersUsa()
+  //     .scale(1250)
+  //     .translate([width / 2, height / 2]);
+
+  // var path = d3.geoPath();
+
+// D3 Projection
+var projection = d3.geoAlbersUsa()
+				   .translate([width/2, height/2])    // translate to center of screen
+				   .scale([1000]);          // scale things down so see entire US
+        
+// Define path generator
+var path = d3.geoPath()               // path generator that will convert GeoJSON to SVG paths
+		  	 .projection(projection);    
+</script>
+
+<div id="svg1" class="svgs">
+  <script>
+
+  var chosen_year = 2019
+  var svg = d3.select("#svg1").append("svg").attr("width", "960").attr("height", "600").attr("id", "first_svg");
+  var div = d3.select("#svg1").append("div")
+      .attr("class", "tooltip").attr("id","first_svg_tooltip")      
+      .style("opacity", 0).style("font", "24px sans-serif").style("left", 800 + "px").style("top", 400 + "px");   
+
+  var div = d3.select("body").append("div")
+      .attr("class", "tooltip").attr("id","third_svg_tooltip")      
+      .style("opacity", 0); 
+
+  var rentColor = d3.scaleLinear().domain([550,2500]).range(["#66b266", "#7f0000"])      
+
+  svg.append("rect").attr("height",height).attr("width",width).attr("fill","white").attr("opacity",0)   
+
+  update_map(chosen_year)
+
+//   d3.json("https://raw.githubusercontent.com/python-visualization/folium/master/tests/us-states.json", function(json) {
+
+// // Bind the data to the SVG and create one path per GeoJSON feature
+// svg.selectAll("path")
+// 	.data(json.features)
+// 	.enter()
+// 	.append("path")
+// 	.attr("d", path)
+// 	.style("stroke", "#fff")
+// 	.style("stroke-width", "1")
+// 	.attr('fill',function(d) { return rentColor(rent[chosen_year][d.id]); })
+// 	.on("mouseover", function(d,i) { 
+// 	    var element = d3.select(this).node();
+// 	    var bbox = element.getBoundingClientRect();
+// 	    div.transition().duration(200).style("opacity", .9).style("left", bbox.left+30 + "px").style("top", bbox.top+30 + "px");
+ 			
+// 	    div.html(d.id +"<br/>Medium Rent:<br/>$"+rent[chosen_year][d.id])});
+// 	});
+
+  function update_map(chosen_year) {
+  	console.log(chosen_year)
+   	var svg = d3.select("#first_svg")
+  	var div = d3.select("#first_svg_tooltip")
+  	svg.selectAll("path").remove();
+	d3.json("https://raw.githubusercontent.com/python-visualization/folium/master/tests/us-states.json", function(json) {  
+  console.log(json)	
+  console.log(json.features) 
+	svg.selectAll("path")
+	.data(json.features)
+	.enter()
+	.append("path")
+	.attr("d", path)
+	.style("stroke", "#fff")
+	.style("stroke-width", "1")
+	.attr('fill',function(d) { if (rent[chosen_year][d.id]) { return rentColor(rent[chosen_year][d.id][0]); }
+    else { return "black"}})
+	.on("mouseover", function(d,i) { 
+	    // var element = d3.select(this).node();
+	    // var bbox = element.getBoundingClientRect();
+	    div.transition().duration(200).style("opacity", .9);
+      var this_year = []
+      if (rent[chosen_year][d.id]) {
+        for (var t=0;t<rent[chosen_year][d.id].length;t++) {
+          if (rent[chosen_year][d.id][t]) { this_year.push("$"+rent[chosen_year][d.id][t])}
+            else { this_year.push("No Data")}
+        }
+    }
+    var city_cords = [-118.2437,34.0522]
+    svg.selectAll("dot").data(city_cords).enter().append('circle').attr("cx",projection([-91.1871,30.4515])[0]).attr("cy",projection([-91.1871,30.4515])[1]).attr("r",5).style('fill','yellow')
+
+    console.log(projection([-118.2437,34.0522])[1])
+
+	    div.html( function() { if (rent[chosen_year][d.id]) { return d.id +"<br/>Medium Rent:"
+        +"<br/>Studio: "+this_year[0]
+        +"<br/>1 Bed: "+this_year[1]
+        +"<br/>2 Bed: "+this_year[2]
+        +"<br/>3 Bed: "+this_year[3]
+        +"<br/>4 Bed: "+this_year[4]
+        +"<br/>Single Family: "+this_year[5]
+      }
+
+	    	else { return 'No data for '+d.id+' in '+chosen_year}
+	    });
+	})
+  .on("click", function(d,i){
+    clicked_state = states[d.id]
+    this_link = "/state/"+clicked_state
+    window.location.href = this_link;
+  });
+});
+};
+
+// to be used if you want to have the tooltip hover over the state
+// .style("left", bbox.left+30 + "px").style("top", bbox.top+30 + "px")
+  function update(){
+  	var s = document.getElementById("chosen_year");
+  	var chosen_year = s.options[s.selectedIndex].value;	
+  	update_map(chosen_year)
+  }
+  </script>
+
+  <select id="chosen_year" onchange="update()">
+  	{% for y in years %}
+  		<option value={{y}}>{{y}}</option>
+  	{% endfor %}
+  </select> 	
+
+
+
+
+</div>
+</body>
+</html>

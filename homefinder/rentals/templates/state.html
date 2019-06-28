@@ -1,0 +1,185 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+		<head>
+				<meta charset="utf-8">
+				<title>HomeFinder</title>
+
+ <link rel="stylesheet" href="{% static 'css/style.css' %}" type="text/css" >
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/topojson.v2.min.js"></script>
+
+<script src="https://cdn.pydata.org/bokeh/release/bokeh-0.13.0.min.js"></script>
+<!-- <script src="https://cdn.pydata.org/bokeh/release/bokeh-widgets-0.13.0.min.js"></script> -->
+<!-- <script src="https://cdn.pydata.org/bokeh/release/bokeh-tables-0.13.0.min.js"></script> -->
+
+<script type="text/javascript" src="{% static 'jquery-3.4.1.js' %}"></script>
+
+
+
+<!-- adding fonts -->
+<link href="http://fonts.googleapis.com/css?family=Righteous" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=Abel" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=Merriweather" rel="stylesheet" type="text/css">
+
+{{ script | safe }}
+
+</head>
+
+<style>
+	.state-borders {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.5px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+path:hover {
+	fill: orange;
+}
+
+div.tooltip {	
+    position: absolute;			
+    text-align: center;			
+    width: auto;					
+    height: auto;					
+    padding: 5px;				
+    font: 12px sans-serif;		
+    background: lightsteelblue;	
+    border: 0px;		
+    border-radius: 20px;			
+    pointer-events: none;			
+}
+</style>
+<body>
+<script>
+
+	var rent = JSON.parse('{{current_rent | safe}}');
+	var link = JSON.parse('{{map_link | safe}}');
+
+  var width = 960;
+  var height = 600;
+
+
+  // var projection = d3.geoAlbersUsa()
+  //     .scale(1250)
+  //     .translate([width / 2, height / 2]);
+
+  // var path = d3.geoPath();
+
+// D3 Projection
+var projection = d3.geoAlbersUsa()
+				   .translate([width/2, height/2])    // translate to center of screen
+				   .scale([1000]);          // scale things down so see entire US
+        
+// Define path generator
+var path = d3.geoPath()               // path generator that will convert GeoJSON to SVG paths
+		  	 .projection(projection);  
+
+</script>
+<div id="svg1" class="svgs">
+<script>
+// D3 Projection
+
+
+		var chosen_year = 2019
+	var svg = d3.select("#svg1").append("svg").attr("width", "900").attr("height", "720").attr("id", "first_svg");
+	var div = d3.select("#svg1").append("div")
+			.attr("class", "tooltip").attr("id","first_svg_tooltip")      
+			.style("opacity", 0).style("font", "24px sans-serif").style("left", 800 + "px").style("top", 400 + "px");   
+
+	var div = d3.select("body").append("div")
+			.attr("class", "tooltip").attr("id","third_svg_tooltip")      
+			.style("opacity", 0); 
+
+	var rentColor = d3.scaleLinear().domain([550,2500]).range(["#66b266", "#7f0000"])
+
+
+// d3.json("https://raw.githubusercontent.com/deldersveld/topojson/master/countries/united-states/us-albers.json", function(error,us) {
+	
+// 	console.log(us.objects.us.geometries)
+// 	hello = $.grep(us.objects.us.geometries, function(e){ return e.properties.name == 'Florida'; });
+// 	console.log(hello[0])
+//   var bounds = path.bounds(hello[0]);
+//   console.log(bounds)
+//      var  dx = bounds[1][0] - bounds[0][0],
+//       dy = bounds[1][1] - bounds[0][1],
+//       x = (bounds[0][0] + bounds[1][0]) / 2,
+//       y = (bounds[0][1] + bounds[1][1]) / 2,
+//       scale = .9 / Math.max(dx / width, dy / height),
+//       translate = [width / 2 - scale * x, height / 2 - scale * y];
+
+//   svg.transition()
+//       .duration(750)
+//       .style("stroke-width", 1.5 / scale + "px")
+//       .attr("transform", "translate(" + translate + ")scale(" + scale + ")");      
+// });
+
+d3.json(link, function(error, us) {
+		var object_name = Object.getOwnPropertyNames(us.objects)[0]
+		var test =  topojson.feature(us, us.objects[object_name])
+		console.log(test)
+		console.log(path.bounds(test))
+		projection.fitSize([width,height],test)
+		svg.selectAll("path")
+						.data(topojson.feature(us, us.objects[object_name]).features)
+						.enter()
+						.append("path")
+						.attr("d", path)
+						.attr("class", "feature")
+						.attr('fill',function(d) {if (rent[chosen_year][d.properties.NAME]) { return rentColor(rent[chosen_year][d.properties.NAME][1]); }
+    else { return "black"}})
+						.on("mouseover", function(d,i) { 
+	    div.transition().duration(200).style("opacity", .9);
+      var this_year = []
+      if (rent[chosen_year][d.properties.NAME]) {
+        for (var t=0;t<rent[chosen_year][d.properties.NAME].length;t++) {
+          if (rent[chosen_year][d.properties.NAME][t]) { this_year.push("$"+rent[chosen_year][d.properties.NAME][t])}
+            else { this_year.push("No Data")}
+        }
+    }
+
+	    div.html( function() { if (rent[chosen_year][d.properties.NAME]) { return d.properties.NAME +"<br/>Medium Rent:"
+        +"<br/>Studio: "+this_year[0]
+        +"<br/>1 Bed: "+this_year[1]
+        +"<br/>2 Bed: "+this_year[2]
+        +"<br/>3 Bed: "+this_year[3]
+        +"<br/>4 Bed: "+this_year[4]
+        +"<br/>Single Family: "+this_year[5]
+      }
+
+	    	else { return 'No data for '+d.properties.NAME+' in '+chosen_year}
+	    });
+	});
+
+
+		svg.append("path")
+						.attr("class", "state-borders")
+						.attr("d", path(topojson.mesh(us, us.objects[object_name], function(a, b) { return a !== b; })));
+
+});
+
+
+
+
+// d3.json("https://raw.githubusercontent.com/deldersveld/topojson/master/countries/us-states/AK-02-alaska-counties.json", function(error, state) {  	
+// 	if (error) throw error;
+// 	console.log(state)
+// 	svg.selectAll("path")
+// 	.data(json.arcs)
+// 	.enter()
+// 	.append("path")
+// 	.attr("d", path)
+// 	.style("stroke", "#fff")
+// 	.style("stroke-width", "1").attr("fill","black")   });
+
+
+</script>
+</div>
+
+	</body>
+</html>
